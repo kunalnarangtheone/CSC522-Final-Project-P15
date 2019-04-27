@@ -20,19 +20,24 @@ from keras.models import Model, load_model
 import keras.backend as K
 from keras.models import Sequential
 
-!pip install kaggle
-!mkdir ~/.kaggle/
-!echo "{\"username\":\"snhender\",\"key\":\"49908c6423f95aa178d20b60d8fe42bc\"}" > ~/.kaggle/kaggle.json
-!chmod 600 ~/.kaggle/kaggle.json
-!cat ~/.kaggle/kaggle.json
+from keras.utils import plot_model
+import gc
 
-!kaggle competitions download -c humpback-whale-identification
+# Kaggle and Shell commands
+# !pip install kaggle
+# !mkdir ~/.kaggle/
+# !ech,\"key\":\"\"}" > ~/.kaggle/kaggle.json
+# !chmod 600 ~/.kaggle/kaggle.json
+# !cat ~/.kaggle/kaggle.json
 
-!mkdir input
-!mv train.csv input/train.csv
-!unzip /content/train.zip -d input/train >/dev/null
-!unzip /content/test.zip -d input/test >/dev/null
+# !kaggle competitions download -c humpback-whale-identification
 
+# !mkdir input
+# !mv train.csv input/train.csv
+# !unzip /content/train.zip -d input/train >/dev/null
+# !unzip /content/test.zip -d input/test >/dev/null
+
+# Loading input data from https://www.kaggle.com/pestipeti/keras-cnn-starter/
 train_df = pd.read_csv("input/train.csv")
 train_df.head()
 
@@ -73,46 +78,31 @@ def prepare_labels(y):
     # print(y.shape)
     return y, label_encoder
 
-X = prepareImages(train_df, train_df.shape[0], "train")
+X = prepareImages(train_df[:12000], train_df[:12000].shape[0], "train")
 X /= 255
 
-y, label_encoder = prepare_labels(train_df['Id']
+y, label_encoder = prepare_labels(train_df[:12000]['Id'])
 
 model = Sequential()
 
-model.add(Conv2D(32, (7, 7), strides = (1, 1), name = 'conv0', input_shape = (100, 100, 3)))
+model.add(Conv2D(32, (7, 7), strides = (1, 1), input_shape = (100, 100, 3)))
 
-model.add(BatchNormalization(axis = 3, name = 'bn0'))
+model.add(BatchNormalization(axis = 3))
 model.add(Activation('relu'))
-
-model.add(MaxPooling2D((2, 2), name='max_pool'))
-model.add(Conv2D(64, (3, 3), strides = (1,1), name="conv1"))
+model.add(MaxPooling2D((2, 2)))
+model.add(Conv2D(64, (3, 3), strides = (1,1)))
 model.add(Activation('relu'))
-model.add(AveragePooling2D((3, 3), name='avg_pool'))
-
+model.add(AveragePooling2D((3, 3)))
 model.add(Flatten())
-model.add(Dense(500, activation="relu", name='rl'))
-model.add(Dropout(0.8))
-model.add(Dense(y.shape[1], activation='softmax', name='sm'))
-
+model.add(Dense(1000, activation="relu"))
+model.add(Dropout(0.7))
+model.add(Dense(y.shape[1], activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer="adam", metrics=['accuracy'])
 model.summary()
 
-from keras.utils import plot_model
-plot_model(model, to_file='model.png')
 
-import gc
+plot_model(model, to_file='model.png')
 
 history = model.fit(X, y, epochs=100, batch_size=16, verbose=1)
 gc.collect()
 model.save(model.h5)
-
-col = ['Image']
-test_df = pd.DataFrame(test, columns=col)
-test_df['Id'] = ''
-
-X = prepareImages(test_df, test_df.shape[0], "test")
-X /= 255
-
-predictions = model.predict(np.array(X), verbose=1)
-
